@@ -21,8 +21,10 @@
 2. 現有平台篩選功能不直覺、難用
 3. 資料來源單一且不穩定
 
+**地理範圍：** 台北市、新北市、桃園市
+
 **第一版範圍（MVP）：**
-- FB 社團爬蟲（前 20 大台北租屋社團）
+- FB 社團爬蟲（前 20 大台北/新北/桃園租屋社團）
 - 規則式資料清洗管線（地址標準化、去重）
 - 地圖為主的搜尋介面（Airbnb 風格）
 - 左側可收合篩選面板
@@ -106,6 +108,12 @@ pet_allowed     BOOLEAN,
 parking         BOOLEAN,
 balcony         BOOLEAN,
 internet        BOOLEAN,
+rental_subsidy  VARCHAR(10),        -- yes / no / unknown
+water_billing   VARCHAR(20),        -- fixed / taiwan_water / unknown
+electric_billing VARCHAR(20),       -- fixed / taiwan_power / unknown
+has_elevator    BOOLEAN,
+floor           SMALLINT,
+total_floors    SMALLINT,
 contact_name    TEXT,
 contact_phone   TEXT,
 contact_method  TEXT,
@@ -151,7 +159,7 @@ backend/
 ├── scraper/
 │   ├── base_scraper.py          # BaseScraper (ABC)
 │   ├── fb_group_scraper.py      # FBGroupScraper
-│   └── scraper_config.py        # ScraperConfig（社團清單、delay 設定）
+│   └── scraper_config.py        # ScraperConfig（社團清單、delay 設定、FB cookie 管理）
 │
 ├── parser/
 │   ├── listing_parser.py        # ListingParser（協調子解析器）
@@ -178,6 +186,19 @@ backend/
     └── services/listing_svc.py  # ListingService
 ```
 
+**去重策略（多因子評分）：**
+
+| 比對維度 | 權重 |
+|---------|------|
+| 標準化地址（geocoding 後座標相近） | 高 |
+| 樓層相同 | 中 |
+| 坪數相近（±1坪） | 中 |
+| 價格相近（±10%） | 中 |
+| 聯絡電話相同 | 高（非必要條件） |
+
+加總超過門檻值 → 標記 duplicate，保留資料較完整的那筆。
+電話只是訊號之一，不同房仲接同一物件（電話不同但地址/樓層/坪數相同）亦可偵測。
+
 **Pipeline 流程：**
 ```
 IngestionPipeline.run()
@@ -185,7 +206,7 @@ IngestionPipeline.run()
   → ListingParser.parse(raw_text)
   → FieldValidator.validate(listing)
   → AddressParser → GeocoderService（失敗 → geocode_failed）
-  → DedupService.check(listing)（重複 → duplicate）
+  → DedupService.check(listing)（多因子評分去重 → duplicate）
   → ListingRepository.upsert(listing)
 ```
 
@@ -204,7 +225,10 @@ IngestionPipeline.run()
 - 行政區：Chip 多選 + 展開更多
 - 坪數：快速標籤
 - 捷運距離：步行 5 / 10 分 / 不限
-- 額外條件：可養寵物、含網路、有停車位、有陽台（checkbox）
+- 額外條件：可養寵物、含網路、有停車位、有陽台、有電梯（checkbox）
+- 租補：有 / 無 / 不限（radio）
+- 水電計費：台水台電計費 / 包水電 / 不限
+- 樓層：自訂範圍輸入（如 3F–10F）
 - 套用按鈕（顯示符合筆數）
 
 **收合行為：**
