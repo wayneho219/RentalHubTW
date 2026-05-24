@@ -1,4 +1,3 @@
-import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine
 from models.base import engine
 
