@@ -3,9 +3,9 @@ import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from models.base import Base
-from models.listing import Listing
-from models.raw_post import RawPost
-from models.geocode_cache import GeocodeCache
+from models.listing import Listing  # noqa: F401 — registers with Base.metadata
+from models.raw_post import RawPost  # noqa: F401 — registers with Base.metadata
+from models.geocode_cache import GeocodeCache  # noqa: F401 — registers with Base.metadata
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
@@ -26,6 +26,7 @@ async def setup_test_db():
     yield
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+    await test_engine.dispose()
 
 
 @pytest_asyncio.fixture
