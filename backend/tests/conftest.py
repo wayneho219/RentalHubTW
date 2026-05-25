@@ -1,7 +1,9 @@
 import os
+import pytest
 import pytest_asyncio
-from sqlalchemy import text
+from sqlalchemy import text, event
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.pool import NullPool
 from models.base import Base
 from models.listing import Listing  # noqa: F401 — registers with Base.metadata
 from models.raw_post import RawPost  # noqa: F401 — registers with Base.metadata
@@ -12,8 +14,10 @@ TEST_DATABASE_URL = os.getenv(
     "postgresql+asyncpg://rentalhub:rentalhub@localhost:5433/rentalhub_test"
 )
 
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-TestSessionLocal = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+# Use NullPool to avoid connection pool issues with asyncpg
+test_engine = create_async_engine(
+    TEST_DATABASE_URL, echo=False, poolclass=NullPool
+)
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
@@ -31,6 +35,9 @@ async def setup_test_db():
 
 @pytest_asyncio.fixture
 async def db_session():
-    async with TestSessionLocal() as session:
+    SessionLocal = async_sessionmaker(
+        test_engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
+    )
+    async with SessionLocal() as session:
         yield session
         await session.rollback()
