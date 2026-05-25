@@ -11,6 +11,12 @@ from alembic import context
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 config = context.config
+
+# Allow DATABASE_URL env var to override alembic.ini setting
+_db_url = os.getenv("DATABASE_URL")
+if _db_url:
+    config.set_main_option("sqlalchemy.url", _db_url)
+
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
