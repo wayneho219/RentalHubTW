@@ -16,5 +16,5 @@ class RawPost(Base):
         Integer, ForeignKey("listings.id"), nullable=True
     )
     parse_status: Mapped[str | None] = mapped_column(String(20))
-    # parse_status possible values:
+    # parse_status 可能的值:
     # success / geocode_failed / duplicate / rejected
